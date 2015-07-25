@@ -32,21 +32,47 @@ prax.getSettings = function() {
 };
 
 prax.writeOutput = function(fs, outputArr, outputFile) {
-    // Convert the output array into a string that can be written to a file
+    /* 
+     * This function writes the output array to the output file
+     *
+     * @fs[obj]		= The node filesystem module
+     * @outputArr[arr]	= The output array with each line of text as an item
+     *                    in the array
+     * @outputFile[str] = The name of the output file, including file extension
+     *
+     * @RETURN		= N/A
+     */
+
     var outputStr = '';
+    // Convert the output array into a string that can be written to a file
     for (var i=0; i<outputArr.length; i++) {
 	// Make sure we're not writing empty strings
 	if (outputArr[i].length > 0) {
 	    outputStr += outputArr[i] + '\n';
 	}
     }
-
+    
+    // Write the string to the file
     fs.writeFile(outputFile, outputStr, function(err) {
     	if(err) { return console.log(err); }
     });
 };
 
 prax.vertConn = function(s, symbols, counters) {
+    /* 
+     * This function 'draws' a vertical column on a given row if a column number
+     * has been defined. This will skip over a row if a mark already exists
+     * on the given column number. If no column number is set, no column will be
+     * drawn.
+     *
+     * @s[str]		= The text of a given row
+     * @symbols[obj]	= The various symbols of the pather project (mark/on/off)
+     * @counters[obj]	= The various counters of the pather project
+     *                    (totalMarks/currentMark/column)
+     *
+     * @RETURN		= The new string with the column drawn on.
+     */
+    
     // Make sure that we need to draw a column first
     if (counters.column > -1) {
 	// Make sure this column does not already contain a mark
@@ -59,12 +85,27 @@ prax.vertConn = function(s, symbols, counters) {
 };
 
 prax.horizConn = function(row, symbols, counters, firstMarkLoc) {
+    /* 
+     * This function 'draws' a horizontal row between either multiple marks,
+     * or a column number and multiple marks.
+     *
+     * @row[str]		= The text of a given row
+     * @symbols[obj]		= The various symbols of the pather project (mark/on/off)
+     * @counters[obj]		= The various counters of the pather project
+     *                            (totalMarks/currentMark/column)
+     * @firstMarkLoc[int]	= The numeric representation of the location of the first
+     *                            mark. This is used to determine the direction of
+     *                            the line.
+     *
+     * @RETURN			= The new row with a horizontal connection drawn on
+     */
+    
     var rowDivide = row.split(symbols.on), rowArr = [],
     column = (counters.column == -1) ? false : true,
     backwards = (firstMarkLoc < counters.column) ? true : false;
 
     if (column) {
-	// A column has been started on this row
+	// A column has already been started on this row
 	if (backwards) {
 	    // Marks are to the left
 	    rowArr = rowDivide[0].split(symbols.mark);
@@ -74,7 +115,7 @@ prax.horizConn = function(row, symbols, counters, firstMarkLoc) {
 	}
 
     } else {
-	// No column exists yet
+	// No column exists yet so we're just looking for marks
 	rowArr = row.split(symbols.mark);
     }
 
@@ -98,9 +139,10 @@ prax.horizConn = function(row, symbols, counters, firstMarkLoc) {
     	}
     }
 
+    // Format our output based on the direction we're going or what type of connection
+    // was set (multiple marks, or column and multiple marks)
     if (column) {
 	if (backwards) {
-	    // reset the column to the first mark
 	    return output + rowDivide[1];
 	} else {
 	    return rowDivide[0] + symbols.on +  output + rowArr[count];
@@ -113,6 +155,20 @@ prax.horizConn = function(row, symbols, counters, firstMarkLoc) {
 
 
 prax.drawPaths = function(iArr, symbols, counters) {
+    /* 
+     * This function goes through each 'row' and looks for marks to connect.
+     * The basic idea is that it will try to connect 2 or more horizontal marks
+     * first, and then travel down each row looking for the next horizontal mark.
+     *
+     * @iArr[arr]	= The array containing the input string with one row in each
+     *                    array item
+     * @symbols[obj]	= The various symbols of the pather project (mark/on/off)
+     * @counters[obj]	= The various counters of the pather project
+     *                    (totalMarks/currentMark/column)
+     *
+     * @RETURN		= The updated input array containing horizontal/vertical
+     *                    connecting lines 
+     */
     var rowArr = [], firstMarkLoc;
     // General sequence, go through each row looking for the first # from left to right
     for (var i=0; i<iArr.length; i++) {
@@ -127,11 +183,8 @@ prax.drawPaths = function(iArr, symbols, counters) {
 		// Increment the counter based on how many marks there are
 		counters.currentMark = counters.currentMark + (rowArr.length - 1)
 
-
-
-		// If there's more than 2 marks, there will be 3 segments
+		// Build any horizontal connections
 		iArr[i] = prax.horizConn(iArr[i], symbols, counters, firstMarkLoc);
-		
 
 		// If there's a second mark, we need to connect the 2
 		if (rowArr.length >= 3) {
@@ -153,7 +206,15 @@ prax.drawPaths = function(iArr, symbols, counters) {
 };
 
 prax.runPather = function (settings) {
-    // Read the input file
+    /* 
+     * This function reads the input file contents, puts it in an array to be updated
+     * with connecting lines, then sends the output to be written to a file
+     *
+     * @settings[obj]	= The global prax settings
+     *
+     * @RETURN		= N/A
+     */
+
     var input = settings.fs.readFileSync(settings.input).toString();
     // Get the total number of hash marks
     settings.counters.totalMarks = (input.split(settings.symbols.mark).length -1);
@@ -173,9 +234,15 @@ prax.runPather = function (settings) {
 };
 
 prax.init = function() {
+    /* 
+     * This function initializes the pather program
+     *
+     * @RETURN = N/A
+     */
     var settings = prax.getSettings();
     
     prax.runPather(settings);
 };
 
+// Initialize pather
 prax.init();
