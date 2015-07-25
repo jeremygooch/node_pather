@@ -22,7 +22,8 @@ prax.getSettings = function() {
 	},
 	'input'		: args[2],
 	'output'	: args[3],
-	'fs'		: require('fs')
+	'fs'		: require('fs'),
+	'totalMarks'    : 0
     };
 };
 
@@ -82,13 +83,23 @@ prax.drawPaths = function(iArr, symbols) {
 };
 
 prax.runPather = function (settings) {
-    // Read the input file into an array using newlines as the 
-    var input = settings.fs.readFileSync(settings.input).toString().split("\n");
+    // Read the input file
+    var input = settings.fs.readFileSync(settings.input).toString();
+    // Get the total number of hash marks
+    settings.totalMarks = (input.split(settings.symbols.mark).length -1);
+    // Convert the input into an array 
+    input = input.split("\n");
 
-    var newSequece = prax.drawPaths(input, settings.symbols);
-    
-    // Write the output file contents
-    prax.writeOutput(settings.fs, input, settings.output);
+    // Make sure that there are at least 2 marks in the input file
+    if (settings.totalMarks > 1) {
+	var newSequece = prax.drawPaths(input, settings.symbols);
+	
+	// Write the output file contents
+	prax.writeOutput(settings.fs, input, settings.output);
+    } else {
+	console.log('File not changed. Input does not contain enough ' + 
+		    settings.symbols.mark + '\'s.');
+    }
 };
 
 prax.init = function() {
