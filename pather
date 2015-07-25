@@ -3,15 +3,23 @@
 global.prax = global.prax || {};
 
 prax.getSettings = function() {
+    /* 
+     * This function is used to define the basic settings including the 
+     * input values
+     *
+     * @RETURN = An object containing the settings for the pather application
+     */
     var args = [];
     process.argv.forEach(function (val, index) {
 	args[index] = val;
     });
 
     return {
-	'mark'		: '#',
-	'off'		: '.',
-	'on'		: '*',
+	'symbols' : {
+	    'mark'	: '#',
+	    'off'	: '.',
+	    'on'	: '*',
+	},
 	'input'		: args[2],
 	'output'	: args[3],
 	'fs'		: require('fs')
@@ -30,11 +38,54 @@ prax.writeOutput = function(fs, outputArr, outputFile) {
     });
 };
 
+prax.horizConn = function(rowArr, symbols) {
+    var count = rowArr.length, strLen = 0, newStr, output = '';
+    // Loop through each piece of the row
+    // Skip the last one
+    for (var i=0; i<(count-1); i++) {
+	// If this is the first row, it should stay intact, but we need to add a mark
+	// after it to connect the pieces
+	if (i == 0) {
+	    output = rowArr[i] + symbols.mark;
+	} else {
+	    strLen = rowArr[i].length;
+	    // Build the new string using marks
+	    for(newStr = ''; newStr.length < strLen; newStr += symbols.on){}
+	    output += newStr + symbols.mark;
+	}
+    }
 
+    return output + rowArr[count - 1];
+};
+
+prax.drawPaths = function(iArr, symbols) {
+    var rowArr = [];
+    // General sequence, go through each row looking for the first # from left to right
+    for (var i=0; i<iArr.length; i++) {
+	if (iArr[i].indexOf(symbols.mark) > -1) {
+	    // Break the row apart based the mark
+	    rowArr = iArr[i].split(symbols.mark);
+	    // If there's a second mark, we need to connect the 2
+	    // Checking for 3 as the array will be in more than 3 parts if there were
+	    // 2 or more marks
+	    if (rowArr.length > 3) {
+		iArr[i] = prax.horizConn(rowArr, symbols);
+	    } else {
+		console.log('theres only one on this row!');
+	    }
+	    // for (var x=0; x<rowArr.length; x++) {
+	    // 	// Here we need to start with the second 
+	    // }
+	}
+    }
+    console.dir(iArr);
+};
 
 prax.runPather = function (settings) {
     // Read the input file into an array using newlines as the 
     var input = settings.fs.readFileSync(settings.input).toString().split("\n");
+
+    var newSequece = prax.drawPaths(input, settings.symbols);
     
     // Write the output file contents
     prax.writeOutput(settings.fs, input, settings.output);
