@@ -150,7 +150,12 @@ prax.horizConn = function(row, symbols, counters, firstMarkLoc) {
 	if (rowDivide[1]) {
 	    return output + rowArr[count];
 	} else {
-	    return row;
+	    if (column) {
+		// Nothing needs to be drawn on this row
+		return row;
+	    } else {
+		return output + rowArr[count];
+	    }
 	}
     }
 
