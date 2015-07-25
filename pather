@@ -103,8 +103,7 @@ prax.horizConn = function(row, symbols, counters, firstMarkLoc) {
     var rowDivide = row.split(symbols.on), rowArr = [],
     column = (counters.column == -1) ? false : true,
     backwards = (firstMarkLoc < counters.column) ? true : false;
-
-    if (column) {
+    if (column && rowDivide[1]) {
 	// A column has already been started on this row
 	if (backwards) {
 	    // Marks are to the left
@@ -141,14 +140,18 @@ prax.horizConn = function(row, symbols, counters, firstMarkLoc) {
 
     // Format our output based on the direction we're going or what type of connection
     // was set (multiple marks, or column and multiple marks)
-    if (column) {
+    if (column && rowDivide[1]) {
 	if (backwards) {
 	    return output + rowDivide[1];
 	} else {
 	    return rowDivide[0] + symbols.on +  output + rowArr[count];
 	}
     } else {
-	return output + rowArr[count];
+	if (rowDivide[1]) {
+	    return output + rowArr[count];
+	} else {
+	    return row;
+	}
     }
 
 };
