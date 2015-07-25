@@ -16,14 +16,18 @@ prax.getSettings = function() {
 
     return {
 	'symbols' : {
-	    'mark'	: '#',
-	    'off'	: '.',
-	    'on'	: '*',
+	    'mark'	    : '#',
+	    'off'	    : '.',
+	    'on'	    : '*',
+	},
+	'counters' : {
+	    'totalMarks'    : 0,
+	    'currentMark'   : 0,
+	    'column'        : -1
 	},
 	'input'		: args[2],
 	'output'	: args[3],
-	'fs'		: require('fs'),
-	'totalMarks'    : 0
+	'fs'		: require('fs')
     };
 };
 
@@ -31,7 +35,10 @@ prax.writeOutput = function(fs, outputArr, outputFile) {
     // Convert the output array into a string that can be written to a file
     var outputStr = '';
     for (var i=0; i<outputArr.length; i++) {
-	outputStr += outputArr[i] + '\n';
+	// Make sure we're not writing empty strings
+	if (outputArr[i].length > 0) {
+	    outputStr += outputArr[i] + '\n';
+	}
     }
 
     fs.writeFile(outputFile, outputStr, function(err) {
@@ -39,63 +46,126 @@ prax.writeOutput = function(fs, outputArr, outputFile) {
     });
 };
 
-prax.horizConn = function(rowArr, symbols) {
-    var count = rowArr.length, strLen = 0, newStr, output = '';
-    // Loop through each piece of the row
-    // Skip the last one
-    for (var i=0; i<(count-1); i++) {
-	// If this is the first row, it should stay intact, but we need to add a mark
-	// after it to connect the pieces
-	if (i == 0) {
-	    output = rowArr[i] + symbols.mark;
-	} else {
-	    strLen = rowArr[i].length;
-	    // Build the new string using marks
-	    for(newStr = ''; newStr.length < strLen; newStr += symbols.on){}
-	    output += newStr + symbols.mark;
+prax.vertConn = function(s, symbols, counters) {
+    // Make sure that we need to draw a column first
+    if (counters.column > -1) {
+	// Make sure this column does not already contain a mark
+	if (s.charAt(counters.column) != symbols.mark) {
+	    s = s.substr(0, counters.column) + symbols.on + s.substr(counters.column + 1);
 	}
     }
 
-    return output + rowArr[count - 1];
+    return s;
 };
 
-prax.drawPaths = function(iArr, symbols) {
-    var rowArr = [];
+prax.horizConn = function(row, symbols, counters, firstMarkLoc) {
+    var rowDivide = row.split(symbols.on), rowArr = [],
+    column = (counters.column == -1) ? false : true,
+    backwards = (firstMarkLoc < counters.column) ? true : false;
+
+    if (column) {
+	// A column has been started on this row
+	if (backwards) {
+	    // Marks are to the left
+	    rowArr = rowDivide[0].split(symbols.mark);
+	} else {
+	    // Marks are to the right
+	    rowArr = rowDivide[1].split(symbols.mark);
+	}
+
+    } else {
+	// No column exists yet
+	rowArr = row.split(symbols.mark);
+    }
+
+    var count = (backwards) ? rowArr.length : rowArr.length -1,
+    strLen = 0, newStr, output = '';
+    for (var i=0; i<(count); i++) {
+    	// If this is the first row, it should stay intact, but we need to add a mark
+    	// after it to connect the pieces
+    	if (i == 0 && (!column || backwards)) {
+    	    output = rowArr[i] + symbols.mark;
+    	} else {
+    	    strLen = rowArr[i].length;
+    	    // Build the new string using marks
+    	    for(newStr = ''; newStr.length < strLen; newStr += symbols.on){}
+	    // Figure out how we need to append/prepend the mark or on symbol
+	    if (column && i == (count - 1)) {
+		output += (backwards) ? newStr + symbols.on : newStr + symbols.mark;
+	    } else {
+		output += newStr + symbols.mark;
+	    }
+    	}
+    }
+
+    if (column) {
+	if (backwards) {
+	    // reset the column to the first mark
+	    return output + rowDivide[1];
+	} else {
+	    return rowDivide[0] + symbols.on +  output + rowArr[count];
+	}
+    } else {
+	return output + rowArr[count];
+    }
+
+};
+
+
+prax.drawPaths = function(iArr, symbols, counters) {
+    var rowArr = [], firstMarkLoc;
     // General sequence, go through each row looking for the first # from left to right
     for (var i=0; i<iArr.length; i++) {
-	if (iArr[i].indexOf(symbols.mark) > -1) {
-	    // Break the row apart based the mark
-	    rowArr = iArr[i].split(symbols.mark);
-	    // If there's a second mark, we need to connect the 2
-	    // Checking for 3 as the array will be in more than 3 parts if there were
-	    // 2 or more marks
-	    if (rowArr.length > 3) {
-		iArr[i] = prax.horizConn(rowArr, symbols);
-	    } else {
-		console.log('theres only one on this row!');
+	// Make sure we aren't out of marks
+	if (counters.totalMarks > counters.currentMark) {
+	    // See if there is a vertical column to draw
+	    iArr[i] = prax.vertConn(iArr[i], symbols, counters);
+	    firstMarkLoc = iArr[i].indexOf(symbols.mark);
+	    if (firstMarkLoc > -1) {
+		// Break the row apart based the mark
+		rowArr = iArr[i].split(symbols.mark);
+		// Increment the counter based on how many marks there are
+		counters.currentMark = counters.currentMark + (rowArr.length - 1)
+
+
+
+		// If there's more than 2 marks, there will be 3 segments
+		iArr[i] = prax.horizConn(iArr[i], symbols, counters, firstMarkLoc);
+		
+
+		// If there's a second mark, we need to connect the 2
+		if (rowArr.length >= 3) {
+		    if ((rowArr[rowArr.length -1]).indexOf(symbols.on) > -1) {
+			// we must be going backwards, so set the column to the first mark
+			counters.column = firstMarkLoc;
+		    } else {
+			// otherwise set the column to the last mark
+			counters.column = iArr[i].lastIndexOf(symbols.mark);
+		    }		    
+		} else {
+		    // There's only 1 mark on this row, so set the column value
+		    counters.column = firstMarkLoc;
+		}
 	    }
-	    // for (var x=0; x<rowArr.length; x++) {
-	    // 	// Here we need to start with the second 
-	    // }
 	}
     }
-    console.dir(iArr);
+    return iArr;
 };
 
 prax.runPather = function (settings) {
     // Read the input file
     var input = settings.fs.readFileSync(settings.input).toString();
     // Get the total number of hash marks
-    settings.totalMarks = (input.split(settings.symbols.mark).length -1);
+    settings.counters.totalMarks = (input.split(settings.symbols.mark).length -1);
     // Convert the input into an array 
     input = input.split("\n");
 
     // Make sure that there are at least 2 marks in the input file
-    if (settings.totalMarks > 1) {
-	var newSequece = prax.drawPaths(input, settings.symbols);
+    if (settings.counters.totalMarks > 1) {
+	var newSequence = prax.drawPaths(input, settings.symbols, settings.counters);
 	
 	// Write the output file contents
-	prax.writeOutput(settings.fs, input, settings.output);
+	prax.writeOutput(settings.fs, newSequence, settings.output);
     } else {
 	console.log('File not changed. Input does not contain enough ' + 
 		    settings.symbols.mark + '\'s.');
