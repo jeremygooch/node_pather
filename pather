@@ -1,0 +1,49 @@
+#!/usr/bin/env nodejs
+
+global.prax = global.prax || {};
+
+prax.getSettings = function() {
+    var args = [];
+    process.argv.forEach(function (val, index) {
+	args[index] = val;
+    });
+
+    return {
+	'mark'		: '#',
+	'off'		: '.',
+	'on'		: '*',
+	'input'		: args[2],
+	'output'	: args[3],
+	'fs'		: require('fs')
+    };
+};
+
+prax.writeOutput = function(fs, outputArr, outputFile) {
+    // Convert the output array into a string that can be written to a file
+    var outputStr = '';
+    for (var i=0; i<outputArr.length; i++) {
+	outputStr += outputArr[i] + '\n';
+    }
+
+    fs.writeFile(outputFile, outputStr, function(err) {
+    	if(err) { return console.log(err); }
+    });
+};
+
+
+
+prax.runPather = function (settings) {
+    // Read the input file into an array using newlines as the 
+    var input = settings.fs.readFileSync(settings.input).toString().split("\n");
+    
+    // Write the output file contents
+    prax.writeOutput(settings.fs, input, settings.output);
+};
+
+prax.init = function() {
+    var settings = prax.getSettings();
+    
+    prax.runPather(settings);
+};
+
+prax.init();

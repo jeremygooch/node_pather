@@ -1,0 +1,36 @@
+#!/usr/bin/env nodejs
+
+global.prax = global.prax || {};
+
+prax.test = function() {
+    console.log('Made it into prax test');
+}
+
+
+var fs = require('fs'),
+    readline = require('readline');
+
+var rd = readline.createInterface({
+    input: fs.createReadStream('input.txt'),
+    output: process.stdout,
+    terminal: false
+});
+
+var test = [], i = 0;
+rd.on('line', function(line) {
+    console.log(line);
+    test[i] = line;
+    i++;
+});
+
+fs.writeFile("output.txt", "Hey there!", function(err) {
+    if(err) {
+        return console.log(err);
+    }
+
+    console.log("The file was saved!");
+}); 
+
+process.argv.forEach(function (val, index, array) {
+    console.log(index + ': ' + val);
+});
